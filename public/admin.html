@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Northbridge Digital — Live Agent Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0F172A;color:#E2E8F0;height:100vh;overflow:hidden}
+
+/* Login */
+#login-screen{display:flex;align-items:center;justify-content:center;height:100vh;
+  background:linear-gradient(135deg,#0F172A 0%,#1E3A8A 100%)}
+.login-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:20px;padding:48px 40px;width:100%;max-width:380px;text-align:center}
+.login-logo{width:56px;height:56px;background:linear-gradient(135deg,#2563EB,#3B82F6);
+  border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.login-logo svg{width:28px;height:28px;color:#fff}
+.login-card h1{font-size:22px;font-weight:700;color:#fff;margin-bottom:6px}
+.login-card p{font-size:14px;color:#94A3B8;margin-bottom:32px}
+.login-card input{width:100%;padding:12px 16px;background:rgba(255,255,255,.08);
+  border:1.5px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font-size:14px;outline:none;
+  transition:border-color .15s}
+.login-card input:focus{border-color:#3B82F6}
+.login-card input::placeholder{color:#64748B}
+.login-btn{width:100%;margin-top:16px;padding:13px;background:linear-gradient(135deg,#2563EB,#3B82F6);
+  border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;
+  transition:opacity .15s}
+.login-btn:hover{opacity:.9}
+.login-error{margin-top:12px;color:#F87171;font-size:13px;display:none}
+
+/* Main layout */
+#app{display:none;height:100vh;flex-direction:column}
+.top-bar{background:#1E293B;border-bottom:1px solid #334155;padding:12px 20px;
+  display:flex;align-items:center;gap:16px;flex-shrink:0}
+.top-bar-logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;color:#fff}
+.top-bar-logo-icon{width:34px;height:34px;background:linear-gradient(135deg,#2563EB,#3B82F6);
+  border-radius:10px;display:flex;align-items:center;justify-content:center}
+.top-bar-logo-icon svg{width:18px;height:18px;color:#fff}
+.top-bar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.top-bar-stat{font-size:13px;color:#94A3B8}
+.top-bar-stat span{color:#38BDF8;font-weight:600}
+.connection-dot{width:10px;height:10px;border-radius:50%;background:#4ADE80}
+.connection-dot.offline{background:#F87171}
+
+/* Body */
+.body-area{flex:1;display:flex;overflow:hidden}
+
+/* Session list */
+#session-list{width:300px;border-right:1px solid #334155;overflow-y:auto;flex-shrink:0;background:#1E293B}
+.session-list-header{padding:14px 16px;border-bottom:1px solid #334155;
+  font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#64748B;
+  display:flex;align-items:center;justify-content:space-between}
+.session-count{background:#2563EB;color:#fff;font-size:11px;padding:2px 8px;border-radius:100px}
+.session-item{padding:14px 16px;border-bottom:1px solid #1E293B;cursor:pointer;
+  transition:background .15s;position:relative}
+.session-item:hover{background:rgba(255,255,255,.04)}
+.session-item.active{background:rgba(37,99,235,.15);border-left:3px solid #2563EB}
+.session-item.nb-alert{animation:pulse-bg 1.5s infinite}
+@keyframes pulse-bg{0%,100%{background:rgba(249,115,22,.1)} 50%{background:rgba(249,115,22,.2)}}
+.si-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.si-id{font-size:12px;font-weight:600;color:#CBD5E1}
+.si-status{font-size:10px;padding:2px 8px;border-radius:100px;font-weight:600;letter-spacing:.04em}
+.si-status.bot{background:rgba(59,130,246,.2);color:#93C5FD}
+.si-status.waiting{background:rgba(249,115,22,.2);color:#FED7AA;animation:blink .8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
+.si-status.human{background:rgba(34,197,94,.2);color:#86EFAC}
+.si-status.ended{background:rgba(100,116,139,.2);color:#94A3B8}
+.si-preview{font-size:12px;color:#64748B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.si-meta{font-size:10px;color:#475569;margin-top:4px}
+.si-alert-badge{position:absolute;top:10px;right:12px;background:#F97316;
+  color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px}
+
+/* No sessions */
+.no-sessions{padding:40px 20px;text-align:center;color:#475569;font-size:14px}
+.no-sessions svg{width:40px;height:40px;margin:0 auto 12px;display:block;color:#334155}
+
+/* Chat panel */
+#chat-panel{flex:1;display:flex;flex-direction:column;background:#0F172A}
+.chat-panel-empty{flex:1;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;color:#334155;text-align:center}
+.chat-panel-empty svg{width:56px;height:56px;color:#1E3A5F}
+.chat-panel-empty h3{color:#475569;font-size:18px}
+.chat-panel-empty p{color:#334155;font-size:14px}
+
+/* Chat header */
+#chat-header{background:#1E293B;border-bottom:1px solid #334155;padding:14px 20px;
+  display:flex;align-items:center;gap:14px;flex-shrink:0}
+.ch-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#2563EB,#3B82F6);
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
+.ch-info{flex:1}
+.ch-name{font-size:15px;font-weight:600;color:#E2E8F0}
+.ch-meta{font-size:12px;color:#64748B;margin-top:1px}
+.ch-actions{display:flex;gap:8px}
+.ch-btn{padding:8px 14px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.ch-btn.take{background:#2563EB;color:#fff}
+.ch-btn.take:hover{background:#1D4ED8}
+.ch-btn.release{background:rgba(249,115,22,.15);color:#F97316;border:1px solid rgba(249,115,22,.3)}
+.ch-btn.release:hover{background:rgba(249,115,22,.25)}
+.ch-btn.end{background:rgba(239,68,68,.15);color:#F87171;border:1px solid rgba(239,68,68,.3)}
+.ch-btn.end:hover{background:rgba(239,68,68,.25)}
+
+/* Messages view */
+#chat-messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:10px}
+#chat-messages::-webkit-scrollbar{width:4px}
+#chat-messages::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
+.cm-msg{display:flex;gap:8px;max-width:80%}
+.cm-msg.user{align-self:flex-end;flex-direction:row-reverse}
+.cm-msg.bot,.cm-msg.agent,.cm-msg.system{align-self:flex-start}
+.cm-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.cm-av.bot-av{background:linear-gradient(135deg,#2563EB,#3B82F6)}
+.cm-av.user-av{background:linear-gradient(135deg,#8B5CF6,#6366F1)}
+.cm-av.agent-av{background:linear-gradient(135deg,#22C55E,#16A34A)}
+.cm-inner{display:flex;flex-direction:column;gap:2px}
+.user .cm-inner{align-items:flex-end}
+.cm-bubble{padding:10px 13px;border-radius:14px;font-size:13px;line-height:1.6;word-break:break-word}
+.bot .cm-bubble{background:#1E293B;color:#CBD5E1;border-bottom-left-radius:4px}
+.user .cm-bubble{background:linear-gradient(135deg,#7C3AED,#6366F1);color:#fff;border-bottom-right-radius:4px}
+.agent .cm-bubble{background:rgba(34,197,94,.12);color:#86EFAC;border:1px solid rgba(34,197,94,.2);border-bottom-left-radius:4px}
+.system .cm-bubble{background:rgba(249,115,22,.1);color:#FED7AA;border:1px solid rgba(249,115,22,.2);font-size:12px;border-radius:8px;text-align:center;padding:6px 12px}
+.cm-msg.system{align-self:center;width:100%;max-width:100%;justify-content:center}
+.cm-time{font-size:10px;color:#475569;padding:0 4px}
+
+/* Input area */
+#chat-input-area{border-top:1px solid #334155;padding:14px 20px;display:flex;gap:10px;flex-shrink:0;background:#1E293B}
+#agent-input{flex:1;padding:11px 14px;background:#0F172A;border:1.5px solid #334155;
+  border-radius:10px;color:#E2E8F0;font-size:14px;outline:none;resize:none;max-height:80px;
+  font-family:inherit;transition:border-color .15s}
+#agent-input:focus{border-color:#3B82F6}
+#agent-input::placeholder{color:#475569}
+#agent-send{padding:11px 18px;background:linear-gradient(135deg,#2563EB,#3B82F6);
+  border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;
+  transition:opacity .15s;flex-shrink:0;align-self:flex-end}
+#agent-send:hover{opacity:.88}
+#agent-send:disabled{opacity:.4;cursor:not-allowed}
+.agent-typing-indicator{font-size:12px;color:#64748B;padding:0 0 6px 0}
+
+/* Notification toast */
+#toast-container{position:fixed;top:16px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:9999}
+.toast{background:#1E293B;border:1px solid #334155;border-radius:12px;padding:14px 18px;
+  display:flex;align-items:flex-start;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);
+  animation:slideIn .3s ease;max-width:320px}
+.toast.alert{border-color:rgba(249,115,22,.4);background:rgba(30,41,59,.95)}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-icon{width:36px;height:36px;border-radius:10px;background:rgba(249,115,22,.15);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+.toast-text{flex:1}
+.toast-title{font-size:14px;font-weight:600;color:#E2E8F0;margin-bottom:2px}
+.toast-sub{font-size:12px;color:#94A3B8}
+.toast-close{color:#64748B;cursor:pointer;font-size:18px;line-height:1;padding:2px}
+.toast-close:hover{color:#E2E8F0}
+
+/* Scrollbar */
+#session-list::-webkit-scrollbar{width:4px}
+#session-list::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    </div>
+    <h1>Live Agent Dashboard</h1>
+    <p>Sign in to manage customer conversations</p>
+    <input type="password" id="pass-input" placeholder="Enter admin password" autocomplete="current-password">
+    <button class="login-btn" id="login-btn">Sign In →</button>
+    <div class="login-error" id="login-error">Incorrect password. Please try again.</div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="app">
+  <div class="top-bar">
+    <div class="top-bar-logo">
+      <div class="top-bar-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+      Northbridge Digital — Live Agent
+    </div>
+    <div class="top-bar-right">
+      <div class="top-bar-stat">Active: <span id="stat-active">0</span></div>
+      <div class="top-bar-stat">Waiting: <span id="stat-waiting">0</span></div>
+      <div class="top-bar-stat">Total today: <span id="stat-total">0</span></div>
+      <div class="connection-dot" id="conn-dot" title="Connected"></div>
+    </div>
+  </div>
+
+  <div class="body-area">
+    <!-- Session list -->
+    <div id="session-list">
+      <div class="session-list-header">
+        Conversations
+        <span class="session-count" id="session-count">0</span>
+      </div>
+      <div id="sessions-inner">
+        <div class="no-sessions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          No active conversations yet.<br>Share your website link to start getting chats!
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat view -->
+    <div id="chat-panel">
+      <div class="chat-panel-empty" id="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <h3>Select a Conversation</h3>
+        <p>Choose a session from the left to view the chat</p>
+      </div>
+      <div id="chat-header" style="display:none">
+        <div class="ch-av" id="ch-av">V</div>
+        <div class="ch-info">
+          <div class="ch-name" id="ch-name">Visitor</div>
+          <div class="ch-meta" id="ch-meta">—</div>
+        </div>
+        <div class="ch-actions" id="ch-actions"></div>
+      </div>
+      <div id="chat-messages"></div>
+      <div id="chat-input-area" style="display:none">
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="agent-typing-indicator" id="agent-typing-note"></div>
+          <textarea id="agent-input" placeholder="Type your reply… (Enter to send)" rows="1"></textarea>
+        </div>
+        <button id="agent-send">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ─── State ──────────────────────────────────────────────────────────────────
+let socket;
+let adminPassword = '';
+let sessions = {};
+let activeSessionId = null;
+let notifSound;
+
+// ─── DOM ────────────────────────────────────────────────────────────────────
+const $loginScreen  = document.getElementById('login-screen');
+const $app          = document.getElementById('app');
+const $passInput    = document.getElementById('pass-input');
+const $loginBtn     = document.getElementById('login-btn');
+const $loginErr     = document.getElementById('login-error');
+const $sessionsInner= document.getElementById('sessions-inner');
+const $sessionCount = document.getElementById('session-count');
+const $emptyState   = document.getElementById('empty-state');
+const $chatHeader   = document.getElementById('chat-header');
+const $chatMessages = document.getElementById('chat-messages');
+const $chatInputArea= document.getElementById('chat-input-area');
+const $agentInput   = document.getElementById('agent-input');
+const $agentSend    = document.getElementById('agent-send');
+const $chName       = document.getElementById('ch-name');
+const $chMeta       = document.getElementById('ch-meta');
+const $chAv         = document.getElementById('ch-av');
+const $chActions    = document.getElementById('ch-actions');
+const $connDot      = document.getElementById('conn-dot');
+const $statActive   = document.getElementById('stat-active');
+const $statWaiting  = document.getElementById('stat-waiting');
+const $statTotal    = document.getElementById('stat-total');
+
+// ─── Login ───────────────────────────────────────────────────────────────────
+function attemptLogin() {
+  const pw = $passInput.value.trim();
+  if (!pw) return;
+  $loginBtn.textContent = 'Connecting…';
+  $loginBtn.disabled = true;
+  adminPassword = pw;
+  initSocket(pw);
+}
+
+$loginBtn.addEventListener('click', attemptLogin);
+$passInput.addEventListener('keydown', e => { if(e.key==='Enter') attemptLogin(); });
+
+// ─── Socket.io ───────────────────────────────────────────────────────────────
+function initSocket(password) {
+  socket = io({ transports: ['websocket','polling'] });
+
+  socket.on('connect', () => {
+    $connDot.classList.remove('offline');
+    socket.emit('admin:auth', { password });
+  });
+
+  socket.on('admin:auth:ok', (data) => {
+    $loginScreen.style.display = 'none';
+    $app.style.display = 'flex';
+    sessions = {};
+    data.sessions.forEach(s => sessions[s.id] = s);
+    renderSessionList();
+    updateStats();
+    requestNotifPermission();
+  });
+
+  socket.on('admin:auth:fail', () => {
+    $loginBtn.textContent = 'Sign In →';
+    $loginBtn.disabled = false;
+    $loginErr.style.display = 'block';
+  });
+
+  socket.on('admin:session:update', (data) => {
+    sessions[data.session.id] = data.session;
+    renderSessionList();
+    updateStats();
+    if (activeSessionId === data.session.id) {
+      renderChatView(data.session);
+    }
+  });
+
+  socket.on('admin:human:requested', (data) => {
+    sessions[data.session.id] = data.session;
+    renderSessionList();
+    updateStats();
+    showToast({
+      icon: '🔔',
+      title: 'Human Agent Requested!',
+      sub: `A visitor needs live help — click to take over.`,
+      sessionId: data.session.id,
+      urgent: true
+    });
+    playNotifSound();
+  });
+
+  socket.on('admin:customer:message', (data) => {
+    if (activeSessionId !== data.sessionId) {
+      const item = document.querySelector(`.session-item[data-id="${data.sessionId}"]`);
+      if (item) {
+        let badge = item.querySelector('.si-alert-badge');
+        if (!badge) { badge = document.createElement('div'); badge.className='si-alert-badge'; badge.textContent='New'; item.appendChild(badge); }
+      }
+    }
+  });
+
+  socket.on('admin:customer:disconnected', (data) => {
+    const s = sessions[data.sessionId];
+    if (s) { s.status = 'disconnected'; renderSessionList(); }
+  });
+
+  socket.on('disconnect', () => {
+    $connDot.classList.add('offline');
+    showToast({ icon:'⚠️', title:'Connection lost', sub:'Attempting to reconnect…' });
+  });
+
+  socket.on('admin:session:taken', (data) => {
+    if (activeSessionId === data.sessionId) renderChatView(sessions[data.sessionId]);
+  });
+}
+
+// ─── Session List ────────────────────────────────────────────────────────────
+const STATUS_ORDER = { waiting:0, human:1, bot:2, ended:3 };
+
+function renderSessionList() {
+  const sorted = Object.values(sessions).sort((a,b) =>
+    (STATUS_ORDER[a.status]??9) - (STATUS_ORDER[b.status]??9) ||
+    new Date(b.meta?.startedAt) - new Date(a.meta?.startedAt)
+  );
+
+  $sessionCount.textContent = sorted.filter(s=>s.status!=='ended').length;
+
+  if (sorted.length === 0) {
+    $sessionsInner.innerHTML = `<div class="no-sessions">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40" style="margin:0 auto 12px;display:block;color:#334155">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      No conversations yet
+    </div>`;
+    return;
+  }
+
+  $sessionsInner.innerHTML = sorted.map(s => {
+    const last = s.messages?.filter(m=>m.role!=='system').slice(-1)[0];
+    const preview = last ? last.content.slice(0, 48) + (last.content.length>48?'…':'') : 'No messages yet';
+    const started = s.meta?.startedAt ? new Date(s.meta.startedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+    const isActive = s.id === activeSessionId;
+    const isWaiting = s.status === 'waiting';
+    return `<div class="session-item${isActive?' active':''}${isWaiting?' nb-alert':''}" data-id="${s.id}" onclick="selectSession('${s.id}')">
+      <div class="si-top">
+        <div class="si-id">Visitor #${s.id.slice(-6).toUpperCase()}</div>
+        <div class="si-status ${s.status}">${s.status === 'waiting' ? '⚡ Needs Agent' : s.status === 'human' ? '🟢 Live' : s.status === 'bot' ? '🤖 AI' : '✓ Ended'}</div>
+      </div>
+      <div class="si-preview">${escHtml(preview)}</div>
+      <div class="si-meta">📄 ${s.meta?.page||'/'} &nbsp;·&nbsp; 🕐 ${started}</div>
+    </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  const vals = Object.values(sessions);
+  $statActive.textContent = vals.filter(s=>s.status==='human').length;
+  $statWaiting.textContent = vals.filter(s=>s.status==='waiting').length;
+  $statTotal.textContent = vals.length;
+}
+
+// ─── Select Session ───────────────────────────────────────────────────────────
+function selectSession(id) {
+  activeSessionId = id;
+  const s = sessions[id];
+  // Clear unread badge
+  const item = document.querySelector(`.session-item[data-id="${id}"]`);
+  if (item) {
+    const badge = item.querySelector('.si-alert-badge');
+    if (badge) badge.remove();
+  }
+  renderSessionList();
+  renderChatView(s);
+}
+
+// ─── Chat View ───────────────────────────────────────────────────────────────
+function renderChatView(s) {
+  if (!s) return;
+  $emptyState.style.display = 'none';
+  $chatHeader.style.display = 'flex';
+  $chatMessages.innerHTML = '';
+
+  $chName.textContent = `Visitor #${s.id.slice(-6).toUpperCase()}`;
+  $chAv.textContent = s.id.slice(-2).toUpperCase();
+  $chMeta.textContent = `Page: ${s.meta?.page||'/'} · Started: ${s.meta?.startedAt ? new Date(s.meta.startedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—'} · Status: ${s.status}`;
+
+  // Render messages
+  (s.messages||[]).forEach(m => renderMessage(m));
+
+  // Render action buttons
+  $chActions.innerHTML = '';
+  if (s.status === 'waiting' || s.status === 'bot') {
+    const btn = mkBtn('Take Over', 'take', () => {
+      socket.emit('admin:take:session', { sessionId: s.id });
+    });
+    $chActions.appendChild(btn);
+  }
+  if (s.status === 'human') {
+    $chActions.appendChild(mkBtn('Release (Back to AI)', 'release', () => {
+      if (confirm('Release this session back to the AI assistant?'))
+        socket.emit('admin:release:session', { sessionId: s.id });
+    }));
+    $chActions.appendChild(mkBtn('End Chat', 'end', () => {
+      if (confirm('End this chat session?'))
+        socket.emit('admin:end:session', { sessionId: s.id });
+    }));
+  }
+  if (s.status === 'ended') {
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:13px;color:#64748B;padding:6px 10px';
+    lbl.textContent = '✓ Session ended';
+    $chActions.appendChild(lbl);
+  }
+
+  // Show/hide input
+  const canType = s.status === 'human';
+  $chatInputArea.style.display = canType ? 'flex' : 'none';
+  $agentSend.disabled = !canType;
+
+  // Scroll to bottom
+  setTimeout(() => { $chatMessages.scrollTop = $chatMessages.scrollHeight; }, 50);
+}
+
+function renderMessage(m) {
+  if (!m.content) return;
+  const div = document.createElement('div');
+  const roleMap = { user:'user', bot:'bot', agent:'agent', system:'system' };
+  const role = roleMap[m.role] || 'bot';
+  div.className = `cm-msg ${role}`;
+
+  let avHtml = '';
+  if (role !== 'system') {
+    const avClass = role === 'user' ? 'user-av' : role === 'agent' ? 'agent-av' : 'bot-av';
+    const avIcon  = role === 'user' ? '👤' : role === 'agent' ? '🧑' : '🤖';
+    avHtml = `<div class="cm-av ${avClass}">${avIcon}</div>`;
+  }
+  const t = m.timestamp ? new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+  const timeHtml = role!=='system' ? `<div class="cm-time">${t}</div>` : '';
+  div.innerHTML = `${role!=='system'?avHtml:''}<div class="cm-inner"><div class="cm-bubble">${escHtml(m.content)}</div>${timeHtml}</div>`;
+  $chatMessages.appendChild(div);
+}
+
+function mkBtn(label, cls, onclick) {
+  const b = document.createElement('button');
+  b.className = `ch-btn ${cls}`;
+  b.textContent = label;
+  b.onclick = onclick;
+  return b;
+}
+
+// ─── Agent Input ─────────────────────────────────────────────────────────────
+let typingTimer;
+$agentInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAgentMsg(); }
+  else {
+    socket.emit('admin:typing', { sessionId: activeSessionId, isTyping: true });
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => socket.emit('admin:typing', { sessionId: activeSessionId, isTyping: false }), 1500);
+  }
+});
+$agentInput.addEventListener('input', () => {
+  $agentInput.style.height = 'auto';
+  $agentInput.style.height = Math.min($agentInput.scrollHeight, 80) + 'px';
+});
+$agentSend.addEventListener('click', sendAgentMsg);
+
+function sendAgentMsg() {
+  const msg = $agentInput.value.trim();
+  if (!msg || !activeSessionId) return;
+  socket.emit('admin:message', { sessionId: activeSessionId, message: msg });
+  // Optimistically render
+  renderMessage({ role:'agent', content:msg, timestamp:new Date().toISOString() });
+  $chatMessages.scrollTop = $chatMessages.scrollHeight;
+  $agentInput.value = '';
+  $agentInput.style.height = 'auto';
+  clearTimeout(typingTimer);
+  socket.emit('admin:typing', { sessionId: activeSessionId, isTyping: false });
+}
+
+// ─── Toasts ──────────────────────────────────────────────────────────────────
+function showToast({ icon, title, sub, sessionId, urgent }) {
+  const $tc = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast${urgent?' alert':''}`;
+  t.innerHTML = `<div class="toast-icon">${icon}</div>
+    <div class="toast-text"><div class="toast-title">${title}</div><div class="toast-sub">${sub}</div></div>
+    <div class="toast-close">×</div>`;
+  if (sessionId) t.style.cursor='pointer';
+  t.querySelector('.toast-close').onclick = (e) => { e.stopPropagation(); t.remove(); };
+  if (sessionId) t.addEventListener('click', () => { selectSession(sessionId); t.remove(); });
+  $tc.appendChild(t);
+  setTimeout(() => t.remove(), 8000);
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+function requestNotifPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function playNotifSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+
+// ─── Utils ───────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
