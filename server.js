@@ -3,6 +3,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const { OpenAI } = require('openai');
+const nodemailer = require('nodemailer');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
@@ -15,6 +16,62 @@ const io = new Server(server, {
 });
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// ─────────────────────────────────────────────────────────────
+// Email Notifications (Outlook SMTP via Nodemailer)
+// ─────────────────────────────────────────────────────────────
+const emailTransporter = (process.env.OUTLOOK_USER && process.env.OUTLOOK_PASS)
+  ? nodemailer.createTransport({
+      host: 'smtp-mail.outlook.com',
+      port: 587,
+      secure: false, // STARTTLS
+      auth: {
+        user: process.env.OUTLOOK_USER,
+        pass: process.env.OUTLOOK_PASS
+      },
+      tls: { ciphers: 'SSLv3' }
+    })
+  : null;
+
+async function sendLiveAgentAlert(session) {
+  if (!emailTransporter) {
+    console.warn('[email] Skipping — OUTLOOK_USER / OUTLOOK_PASS not set.');
+    return;
+  }
+  const notifyTo = process.env.NOTIFY_EMAIL || process.env.OUTLOOK_USER;
+  const time = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' });
+  const convo = session.messages
+    .filter(m => m.role === 'user' || m.role === 'bot')
+    .slice(-10) // last 10 messages for context
+    .map(m => `${m.role === 'user' ? '👤 Visitor' : '🤖 Aria'}: ${m.content}`)
+    .join('\n');
+
+  const mailOptions = {
+    from: `"Northbridge Chatbot" <${process.env.OUTLOOK_USER}>`,
+    to: notifyTo,
+    subject: `🔔 Live Agent Requested — ${session.meta.name} (${time})`,
+    text: [
+      `A visitor has requested a live agent on your chatbot.`,
+      ``,
+      `Time:     ${time}`,
+      `Visitor:  ${session.meta.name}`,
+      `Page:     ${session.meta.page}`,
+      `Session:  ${session.id}`,
+      ``,
+      `─── Recent Conversation ───`,
+      convo || '(no messages yet)',
+      ``,
+      `Log in to the admin panel to take over the chat.`
+    ].join('\n')
+  };
+
+  try {
+    await emailTransporter.sendMail(mailOptions);
+    console.log(`[email] Live agent alert sent to ${notifyTo}`);
+  } catch (err) {
+    console.error('[email] Failed to send alert:', err.message);
+  }
+}
 
 app.use(cors());
 app.use(express.json());
@@ -258,6 +315,9 @@ io.on('connection', (socket) => {
 
     // Ping all admins with an alert
     io.to('admin').emit('admin:human:requested', { session: getSafeSession(session) });
+
+    // Send email notification to owner
+    sendLiveAgentAlert(session);
   });
 
   // ── ADMIN ─────────────────────────────────────────────────
