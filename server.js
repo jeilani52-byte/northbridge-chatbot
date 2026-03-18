@@ -20,25 +20,24 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // ─────────────────────────────────────────────────────────────
 // Email Notifications (Outlook SMTP via Nodemailer)
 // ─────────────────────────────────────────────────────────────
-const emailTransporter = (process.env.OUTLOOK_USER && process.env.OUTLOOK_PASS)
+const emailTransporter = (process.env.GMAIL_USER && process.env.GMAIL_APP_PASS)
   ? nodemailer.createTransport({
-      host: 'smtp-mail.outlook.com',
+      host: 'smtp.gmail.com',
       port: 587,
       secure: false, // STARTTLS
       auth: {
-        user: process.env.OUTLOOK_USER,
-        pass: process.env.OUTLOOK_PASS
-      },
-      tls: { ciphers: 'SSLv3' }
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASS
+      }
     })
   : null;
 
 async function sendLiveAgentAlert(session) {
   if (!emailTransporter) {
-    console.warn('[email] Skipping — OUTLOOK_USER / OUTLOOK_PASS not set.');
+    console.warn('[email] Skipping — GMAIL_USER / GMAIL_APP_PASS not set.');
     return;
   }
-  const notifyTo = process.env.NOTIFY_EMAIL || process.env.OUTLOOK_USER;
+  const notifyTo = process.env.NOTIFY_EMAIL || process.env.GMAIL_USER;
   const time = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' });
   const convo = session.messages
     .filter(m => m.role === 'user' || m.role === 'bot')
@@ -47,7 +46,7 @@ async function sendLiveAgentAlert(session) {
     .join('\n');
 
   const mailOptions = {
-    from: `"Northbridge Chatbot" <${process.env.OUTLOOK_USER}>`,
+    from: `"Northbridge Chatbot" <${process.env.GMAIL_USER}>`,
     to: notifyTo,
     subject: `🔔 Live Agent Requested — ${session.meta.name} (${time})`,
     text: [
