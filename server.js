@@ -3,7 +3,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const { OpenAI } = require('openai');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
@@ -18,54 +18,48 @@ const io = new Server(server, {
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ─────────────────────────────────────────────────────────────
-// Email Notifications (Outlook SMTP via Nodemailer)
+// Email Notifications (Resend HTTP API — works on Railway free)
 // ─────────────────────────────────────────────────────────────
-const emailTransporter = (process.env.GMAIL_USER && process.env.GMAIL_APP_PASS)
-  ? nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // STARTTLS
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASS
-      }
-    })
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
 async function sendLiveAgentAlert(session) {
-  if (!emailTransporter) {
-    console.warn('[email] Skipping — GMAIL_USER / GMAIL_APP_PASS not set.');
+  if (!resend) {
+    console.warn('[email] Skipping — RESEND_API_KEY not set.');
     return;
   }
-  const notifyTo = process.env.NOTIFY_EMAIL || process.env.GMAIL_USER;
+  const notifyTo = process.env.NOTIFY_EMAIL;
+  if (!notifyTo) {
+    console.warn('[email] Skipping — NOTIFY_EMAIL not set.');
+    return;
+  }
   const time = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' });
   const convo = session.messages
     .filter(m => m.role === 'user' || m.role === 'bot')
-    .slice(-10) // last 10 messages for context
-    .map(m => `${m.role === 'user' ? '👤 Visitor' : '🤖 Aria'}: ${m.content}`)
+    .slice(-10)
+    .map(m => `${m.role === 'user' ? 'Visitor' : 'Aria'}: ${m.content}`)
     .join('\n');
 
-  const mailOptions = {
-    from: `"Northbridge Chatbot" <${process.env.GMAIL_USER}>`,
-    to: notifyTo,
-    subject: `🔔 Live Agent Requested — ${session.meta.name} (${time})`,
-    text: [
-      `A visitor has requested a live agent on your chatbot.`,
-      ``,
-      `Time:     ${time}`,
-      `Visitor:  ${session.meta.name}`,
-      `Page:     ${session.meta.page}`,
-      `Session:  ${session.id}`,
-      ``,
-      `─── Recent Conversation ───`,
-      convo || '(no messages yet)',
-      ``,
-      `Log in to the admin panel to take over the chat.`
-    ].join('\n')
-  };
-
   try {
-    await emailTransporter.sendMail(mailOptions);
+    await resend.emails.send({
+      from: 'Northbridge Chatbot <onboarding@resend.dev>',
+      to: [notifyTo],
+      subject: `Live Agent Requested — ${session.meta.name} (${time})`,
+      text: [
+        `A visitor has requested a live agent on your chatbot.`,
+        ``,
+        `Time:     ${time}`,
+        `Visitor:  ${session.meta.name}`,
+        `Page:     ${session.meta.page}`,
+        `Session:  ${session.id}`,
+        ``,
+        `--- Recent Conversation ---`,
+        convo || '(no messages yet)',
+        ``,
+        `Log in to the admin panel to take over the chat.`
+      ].join('\n')
+    });
     console.log(`[email] Live agent alert sent to ${notifyTo}`);
   } catch (err) {
     console.error('[email] Failed to send alert:', err.message);
